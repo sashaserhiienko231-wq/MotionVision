@@ -573,7 +573,10 @@ class WindowStateTests(unittest.TestCase):
             app = self.make_app(root, camera_index=2)
             app._latest_frame = np.zeros((720, 1280, 3), np.uint8)
             app.metrics.resolution = "1280x720"
-            with patch("app.cv2.getWindowImageRect", return_value=(33, 44, 1000, 700)):
+            with patch("app.cv2.getWindowImageRect", return_value=(33, 44, 1000, 700)), \
+                 patch.object(app.window_manager, "client_work_areas", return_value=(
+                     __import__("windowing").WorkArea(0, 0, 1920, 1080, True),
+                 )):
                 app._save_window_state("window")
             stored = json.loads((root / "config.json").read_text(encoding="utf-8"))
             self.assertEqual((stored["x"], stored["y"], stored["width"], stored["height"]), (33, 44, 1000, 700))
@@ -796,12 +799,14 @@ class RecordingAndTelegramTests(unittest.TestCase):
 
 class MediaPipeSmokeTests(unittest.TestCase):
     def test_media_pipe_tasks_models_process_a_synthetic_frame(self):
+        from mediapipe.tasks.python import BaseOptions
         from app import PROCESSING_MODES, MediaPipeTasks
         model_dir = Path(__file__).resolve().parents[1] / "models"
         if not all((model_dir / name).exists() or (model_dir / f"{name}.download").exists()
                    for name in ("pose_landmarker_lite.task", "hand_landmarker.task", "face_landmarker.task")):
             self.skipTest("Bundled MediaPipe task assets are missing")
-        with MediaPipeTasks(model_dir) as tasks:
+        # Exercise actual Tasks inference through the CPU path on headless CI runners.
+        with MediaPipeTasks(model_dir, delegate=BaseOptions.Delegate.CPU) as tasks:
             tasks.set_mode(PROCESSING_MODES[2])
             result = tasks.detect(np.zeros((240, 320, 3), dtype=np.uint8))
             self.assertEqual(result.hand_landmarks, {})

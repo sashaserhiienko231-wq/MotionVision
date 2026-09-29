@@ -60,7 +60,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-build.txt
       - name: Install desktop packaging dependencies
-        run: sudo apt-get update && sudo apt-get install -y dpkg-dev libgl1 libglib2.0-0 libx11-6 libxcb1 squashfs-tools
+        # MediaPipe's native Tasks runtime needs libGLESv2.so.2 at load time,
+        # even when the inference delegate is CPU-only on a headless runner.
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev libegl1 libgles2 libgl1 libglib2.0-0 libx11-6 libxcb1 squashfs-tools
       - name: Read version and runner architecture
         id: meta
         run: |
@@ -138,14 +140,31 @@ jobs:
           java-version: "17"
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4
-      - name: Install Android SDK packages
+      - name: Install Android SDK and accept licenses
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+      - name: Verify Android SDK environment and installed packages
         run: |
-          set +o pipefail
-          yes | sdkmanager --licenses >/dev/null
-          license_status=${PIPESTATUS[1]}
-          set -o pipefail
-          test "$license_status" -eq 0
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          echo "$sdk_root/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
+          export ANDROID_HOME="$sdk_root" ANDROID_SDK_ROOT="$sdk_root"
+          export PATH="$sdk_root/cmdline-tools/latest/bin:$sdk_root/platform-tools:$PATH"
+          command -v sdkmanager
+          sdkmanager --list_installed
+          test -d "$ANDROID_HOME/platforms/android-36"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/aapt"
       - name: Read product version
         id: meta
         run: echo "version=$(python -c 'import json; print(json.load(open("config/version.json"))["version"])')" >> "$GITHUB_OUTPUT"

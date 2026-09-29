@@ -311,7 +311,7 @@ class FrameInferenceScheduler:
 
 
 class MediaPipeTasks:
-    def __init__(self, models_dir: Path) -> None:
+    def __init__(self, models_dir: Path, *, delegate: Any | None = None) -> None:
         self.models_dir = models_dir
         self.landmarkers: list[Any] = []
         self.last_timestamp_ms = -1
@@ -341,11 +341,17 @@ class MediaPipeTasks:
             base_options = mp_tasks.BaseOptions
             video_mode = vision.RunningMode.VIDEO
 
+            def task_base_options(filename: str) -> Any:
+                options: dict[str, Any] = {
+                    "model_asset_path": str(model_paths[filename]),
+                }
+                if delegate is not None:
+                    options["delegate"] = delegate
+                return base_options(**options)
+
             self.pose = vision.PoseLandmarker.create_from_options(
                 vision.PoseLandmarkerOptions(
-                    base_options=base_options(
-                        model_asset_path=str(model_paths["pose_landmarker_lite.task"])
-                    ),
+                    base_options=task_base_options("pose_landmarker_lite.task"),
                     running_mode=video_mode,
                     num_poses=4,
                     min_pose_detection_confidence=0.5,
@@ -356,9 +362,7 @@ class MediaPipeTasks:
             self.landmarkers.append(self.pose)
             self.hands = vision.HandLandmarker.create_from_options(
                 vision.HandLandmarkerOptions(
-                    base_options=base_options(
-                        model_asset_path=str(model_paths["hand_landmarker.task"])
-                    ),
+                    base_options=task_base_options("hand_landmarker.task"),
                     running_mode=video_mode,
                     num_hands=8,
                     min_hand_detection_confidence=0.5,
@@ -369,9 +373,7 @@ class MediaPipeTasks:
             self.landmarkers.append(self.hands)
             self.face = vision.FaceLandmarker.create_from_options(
                 vision.FaceLandmarkerOptions(
-                    base_options=base_options(
-                        model_asset_path=str(model_paths["face_landmarker.task"])
-                    ),
+                    base_options=task_base_options("face_landmarker.task"),
                     running_mode=video_mode,
                     num_faces=10,
                     min_face_detection_confidence=0.5,

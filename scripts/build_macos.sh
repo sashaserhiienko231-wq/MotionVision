@@ -25,13 +25,39 @@ case "$ARCH" in arm64|x86_64) ;; *) echo "Unsupported macOS architecture: $ARCH"
   --distpath "$OUT" --workpath "$BUILD" core/app.py
 APP="$OUT/Motion Vision.app"
 PLIST="$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c 'Set :CFBundleName Motion Vision' "$PLIST"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$PLIST"
-/usr/libexec/PlistBuddy -c 'Add :NSCameraUsageDescription string "Motion Vision processes camera frames locally to detect faces, hands, poses and gestures."' "$PLIST"
 ICON_IN_BUNDLE="$(find "$APP/Contents/Resources" -maxdepth 1 -type f -iname '*.icns' -size +0c -print -quit)"
 test -n "$ICON_IN_BUNDLE"
+set_plist_string() {
+  key="$1"
+  value="$2"
+  if /usr/libexec/PlistBuddy -c "Print :$key" "$PLIST" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :$key \"$value\"" "$PLIST"
+  else
+    /usr/libexec/PlistBuddy -c "Add :$key string \"$value\"" "$PLIST"
+  fi
+}
+verify_plist_string() {
+  key="$1"
+  expected="$2"
+  actual="$(/usr/libexec/PlistBuddy -c "Print :$key" "$PLIST")"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "Unexpected Info.plist value for $key: $actual" >&2
+    return 1
+  fi
+}
+set_plist_string CFBundleName "Motion Vision"
+set_plist_string CFBundleShortVersionString "$VERSION"
+set_plist_string CFBundleVersion "$VERSION"
+set_plist_string CFBundleIdentifier "com.motionvision.app"
+set_plist_string NSCameraUsageDescription "Motion Vision processes camera frames locally to detect faces, hands, poses and gestures."
+set_plist_string CFBundleIconFile "$(basename "$ICON_IN_BUNDLE")"
 plutil -lint "$PLIST"
+verify_plist_string CFBundleName "Motion Vision"
+verify_plist_string CFBundleShortVersionString "$VERSION"
+verify_plist_string CFBundleVersion "$VERSION"
+verify_plist_string CFBundleIdentifier "com.motionvision.app"
+verify_plist_string NSCameraUsageDescription "Motion Vision processes camera frames locally to detect faces, hands, poses and gestures."
+verify_plist_string CFBundleIconFile "$(basename "$ICON_IN_BUNDLE")"
 hdiutil create -volname "Motion Vision" -srcfolder "$APP" -ov -format UDZO "$OUT/MotionVision.dmg"
 test -d "$APP" && test -s "$OUT/MotionVision.dmg"
 hdiutil verify "$OUT/MotionVision.dmg"
