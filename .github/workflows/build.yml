@@ -80,7 +80,11 @@ jobs:
           test -s dist/linux/MotionVision.deb
           dpkg-deb --field dist/linux/MotionVision.deb Version Architecture
           dpkg-deb --contents dist/linux/MotionVision.deb | grep 'com.motionvision.app.png' >/dev/null
-          unsquashfs -l dist/linux/MotionVision.AppImage | grep 'com.motionvision.app.png' >/dev/null
+          appimage="$GITHUB_WORKSPACE/dist/linux/MotionVision.AppImage"
+          extract_dir="$RUNNER_TEMP/motionvision-appimage-check"
+          mkdir -p "$extract_dir"
+          (cd "$extract_dir" && "$appimage" --appimage-extract)
+          test -s "$extract_dir/squashfs-root/com.motionvision.app.png"
       - uses: actions/upload-artifact@v4
         with:
           name: MotionVision-v${{ steps.meta.outputs.version }}-Linux-${{ steps.meta.outputs.arch }}
@@ -141,6 +145,8 @@ jobs:
           java-version: "17"
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4
+      - name: Install native runtime libraries for shared MediaPipe tests
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 libglib2.0-0 libx11-6 libxcb1
       - name: Install Android SDK and accept licenses
         uses: android-actions/setup-android@v4
         with:
