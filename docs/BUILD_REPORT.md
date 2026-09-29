@@ -1,21 +1,21 @@
 # Motion Vision 1.0.0 — отчет о готовности релиза
 
-Дата локальной проверки: **29 сентября 2026**. Локальный runner: Windows x64 (`Windows 10.0.26200`). Исходники прежнего приложения вне `MotionVision/` не менялись.
+Дата проверки: **29 сентября 2026**. Локальный runner: Windows x64 (`Windows 10.0.26200`). Hosted matrix: GitHub Actions run [36542162073](https://github.com/sashaserhiienko231-wq/MotionVision/actions/runs/36542162073), tested code commit `1635c0b7566025f5032e77057b3895058d611153`.
 
 ## Статус платформ
 
-| Платформа | Runner, заданный для CI | Имя GitHub Actions artifact | Статус и фактический локальный результат | Тесты |
+| Платформа | Hosted runner / фактическая архитектура | GitHub Actions artifact (uploaded ZIP size) | Реальные файлы в artifact | Hosted tests |
 |---|---|---|---|---|
-| Windows x64 | `windows-latest` | `MotionVision-v1.0.0-Windows-x64` | Локально собран и проверен: EXE 152 259 294 байта; installer 152 905 522 байта | 78 Python tests passed локально |
-| Android multiarch | `ubuntu-latest` | `MotionVision-v1.0.0-Android-multiarch` | Локально собран и проверен на Windows runner: APK 78 383 585 байт; AAB 40 516 424 байта | 4 Gradle unit tests passed; 78 Python tests separately passed |
-| Linux x86_64 | `ubuntu-latest` | `MotionVision-v1.0.0-Linux-x86_64` | **Не собран**; локального AppImage/DEB нет; ожидаются AppImage и DEB | Linux runner не запускался; 78 общих Python tests прошли только на Windows |
-| macOS | `macos-latest` | `MotionVision-v1.0.0-macOS-<uname -m>` | **Не собран**; локального `.app`/DMG нет; ожидаются `Motion Vision.app` и DMG | macOS runner не запускался; 78 общих Python tests прошли только на Windows |
+| Windows x64 | `windows-latest` / x64 | [MotionVision-v1.0.0-Windows-x64](https://github.com/sashaserhiienko231-wq/MotionVision/actions/runs/36542162073/artifacts/11020629443) — **304 057 465 байт** | EXE **152 260 767 байт**; installer **153 182 997 байт** | 78/78 Python tests passed |
+| Linux x86_64 | `ubuntu-latest` / Ubuntu 24.04, x86_64 | [MotionVision-v1.0.0-Linux-x86_64](https://github.com/sashaserhiienko231-wq/MotionVision/actions/runs/36542162073/artifacts/11020484870) — **386 113 393 байт** | AppImage **193 307 840 байт**; DEB **192 850 538 байт** | 78/78 Python tests passed |
+| macOS ARM64 | `macos-latest` / arm64 | [MotionVision-v1.0.0-macOS-arm64](https://github.com/sashaserhiienko231-wq/MotionVision/actions/runs/36542162073/artifacts/11020729053) — **521 891 574 байта** | `Motion Vision.app` ~304 MiB; DMG ~156 MiB | 78/78 Python tests passed |
+| Android multiarch | `ubuntu-latest` / Ubuntu 24.04, amd64, JDK 17 | [MotionVision-v1.0.0-Android-multiarch](https://github.com/sashaserhiienko231-wq/MotionVision/actions/runs/36542162073/artifacts/11020694685) — **81 252 995 байт** | APK **78 383 585 байт**; AAB **40 516 424 байта** | 78/78 Python tests + 4/4 Gradle unit tests passed |
 
-**GitHub Actions verification: ни один job пока не запускался.** Имена runners выше — конфигурация, а не свидетельство запуска. Windows и Android существуют как локально собранные артефакты; Linux и macOS должны оставаться непроверенными до успешных нативных jobs.
+**GitHub Actions run 36542162073: все четыре jobs завершились успешно и загрузили artifacts.** Windows EXE icon, Linux DEB/AppImage icon, macOS `.icns` и plist metadata, Android signing/package ID/launcher icon checks прошли. Linux AppImage/DEB и macOS app/DMG собраны реальными native runners, не локальными заглушками.
 
-Локальный Git repository и ветка `main` созданы; исходники и workflows подготовлены в начальном локальном commit. Git remote не настроен, поэтому GitHub Actions еще не запускался. После создания GitHub repository нужен его фактический URL, например `https://github.com/<OWNER>/MotionVision.git`; владельца и адрес здесь не придумывали. Добавьте этот URL как `origin` и выполните `git push -u origin main`, чтобы запустить CI.
+Размер в таблице — размер загруженного GitHub Actions artifact ZIP из GitHub API; размеры отдельных файлов приведены из native job logs. Artifacts настроены с хранением **30 дней**.
 
-GitHub Actions выполняет общие 78 Python тестов в каждом desktop job, затем нативные проверки. Android job также запускает 4 Kotlin/Gradle unit tests. Будущие native результаты Linux/macOS будут отражены отдельно после реального запуска workflow.
+Каждый hosted job запускает 78 общих Python tests. Android job дополнительно запускает 4 Kotlin/Gradle unit tests. Всего в этом run: 312 Python test executions и 4 Android unit test executions.
 
 ## Локальные артефакты
 
@@ -25,17 +25,18 @@ GitHub Actions выполняет общие 78 Python тестов в кажд�
 | `dist/windows/MotionVision-Setup.exe` | 152 905 522 байта |
 | `dist/android/MotionVision.apk` | 78 383 585 байт |
 | `dist/android/MotionVision.aab` | 40 516 424 байт |
-| Linux AppImage / DEB | Не созданы |
-| macOS `.app` / DMG | Не созданы |
+| Linux AppImage / DEB | Не создавались локально; собраны и загружены hosted job |
+| macOS `.app` / DMG | Не создавались локально; собраны и загружены hosted job |
 
 Android AAB подписан debug-ключом и не предназначен для загрузки в Play Store. Windows installer и desktop-приложение не подписаны кодовым сертификатом.
 
 ## Известные ограничения
 
-- GitHub Actions пока не запускался, поэтому здесь нет CI-загрузок или нативной Linux/macOS проверки. Для ручного релиза подготовлен `.github/workflows/release.yml` с `workflow_dispatch`.
-- Linux и macOS артефакты и их размеры появятся только после успешных hosted jobs. Текущие локальные Python test results не заменяют native Linux/macOS результаты.
+- Ручной workflow `.github/workflows/release.yml` запускается через `workflow_dispatch`; он создает build artifacts, но не публикует GitHub Release.
+- macOS runner сейчас arm64; отдельный Intel runner не настроен. macOS app/DMG не подписаны и не notarized; Gatekeeper может потребовать разрешение пользователя.
+- Linux и macOS файлы проверялись на hosted runners, но приложение не запускалось на локальных Linux/macOS устройствах с камерой.
 - Android APK/AAB собраны и подписаны debug-ключом; приложение не было запущено на физическом Android устройстве или эмуляторе.
-- Windows installer и macOS app/DMG остаются неподписанными/notarized. Для production Android AAB нужен пользовательский release keystore.
+- Windows installer и EXE не подписаны кодовым сертификатом. Для production Android AAB нужен пользовательский release keystore.
 - Telegram проверен только mock-тестами без credentials. Desktop face embeddings локальные, но приложение их не шифрует.
 
 ## Автоматические проверки
@@ -44,12 +45,14 @@ Android AAB подписан debug-ключом и не предназначен
 - Android `testDebugUnitTest`: **4/4 теста пройдены**.
 - `compileall` для desktop core/tests: пройдено.
 - `pip check` project venv: `No broken requirements found`.
-- Windows one-file сборка, запуск packaged executable с `--version`, встроенные version/icon ресурсы и компиляция Inno Setup: пройдены.
+- Windows hosted one-file build, запуск packaged executable с `--version`, встроенные version/icon ресурсы и компиляция Inno Setup: пройдены.
 - Android `assembleRelease`, `bundleRelease` и `lintVitalRelease`: пройдены. В APK включены ABI `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`.
+- Linux hosted AppImage и DEB созданы; DEB metadata, icon in DEB, AppImage extraction and bundled icon проверены.
+- macOS hosted `Motion Vision.app` и DMG созданы; `plutil -lint`, CFBundle metadata/version fields, `.icns` resource and DMG checksum прошли.
 - `apksigner verify` для APK: подпись v2 проверена; `jarsigner -verify` для AAB: `jar verified`. Подпись Android — локальная debug, self-signed.
 - Android manifest: запрашивается камера; INTERNET и ACCESS_NETWORK_STATE не включены.
 - `bash -n` прошел для Linux, macOS, Android и Linux aggregate scripts.
-- Оба workflow прошли локальный YAML parse; Windows PE icon resource и Android APK signing/package/icon checks прошли.
+- Оба workflow прошли локальный YAML parse; каждый hosted job завершился successfully и загрузил названный artifact.
 
 MediaPipe во время smoke-тестов печатает предупреждение о `NORM_RECT` без `IMAGE_DIMENSIONS`; smoke-тест при этом прошел. PyInstaller также выводит предупреждение об экспериментальном NumPy `array_api` и необязательных зависимостях MediaPipe GenAI конвертера; приложение собирается без этих необязательных пакетов.
 
