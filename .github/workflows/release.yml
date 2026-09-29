@@ -1,0 +1,14 @@
+name: Motion Vision manual release build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-platform-artifacts:
+    name: Build and upload all native platform artifacts
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read

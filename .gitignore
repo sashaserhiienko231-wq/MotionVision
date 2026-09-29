@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+faces.json
+actions.json
+motion_vision_config.json
+motion_vision_ui.json
+recordings/
+*.spec
+build/
+android/.gradle/
+android/local.properties
+android/app/build/
+dist/**
+!dist/.gitkeep

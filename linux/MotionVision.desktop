@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Motion Vision
+Comment=Local real-time face, hand, pose and gesture tracking
+Exec=MotionVision
+Icon=com.motionvision.app
+Terminal=false
+Categories=Utility;Video;Graphics;
+StartupNotify=true
+StartupWMClass=Motion Vision
+X-AppVersion=1.0.0

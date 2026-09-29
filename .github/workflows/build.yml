@@ -1,0 +1,175 @@
+name: Motion Vision CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - name: Read product version
+        id: meta
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw "Expected Windows x64 runner, got $env:PROCESSOR_ARCHITECTURE" }
+          $version = (Get-Content config/version.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Test, diagnose, and build release artifacts
+        shell: pwsh
+        run: ./scripts/build_windows.ps1
+      - name: Verify embedded Windows application icon
+        run: python scripts/verify_windows_icon.py dist/windows/MotionVision.exe
+      - name: Verify release files
+        shell: pwsh
+        run: |
+          if ((Get-Item dist/windows/MotionVision.exe).Length -le 0) { throw 'Missing Windows EXE' }
+          if ((Get-Item dist/windows/MotionVision-Setup.exe).Length -le 0) { throw 'Missing Windows installer' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotionVision-v${{ steps.meta.outputs.version }}-Windows-x64
+          path: |
+            dist/windows/MotionVision.exe
+            dist/windows/MotionVision-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  linux:
+    name: Linux x86_64 AppImage and DEB
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - name: Install desktop packaging dependencies
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev libgl1 libglib2.0-0 libx11-6 libxcb1 squashfs-tools
+      - name: Read version and runner architecture
+        id: meta
+        run: |
+          version="$(python -c 'import json; print(json.load(open("config/version.json"))["version"])')"
+          arch="$(uname -m)"
+          test "$arch" = x86_64
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "arch=$arch" >> "$GITHUB_OUTPUT"
+      - name: Test, diagnose, and build release artifacts
+        run: bash ./scripts/build_linux.sh
+      - name: Verify release files and Linux icons
+        run: |
+          test -s dist/linux/MotionVision.AppImage
+          test -s dist/linux/MotionVision.deb
+          dpkg-deb --field dist/linux/MotionVision.deb Version Architecture
+          dpkg-deb --contents dist/linux/MotionVision.deb | grep 'com.motionvision.app.png' >/dev/null
+          unsquashfs -l dist/linux/MotionVision.AppImage | grep 'com.motionvision.app.png' >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotionVision-v${{ steps.meta.outputs.version }}-Linux-${{ steps.meta.outputs.arch }}
+          path: |
+            dist/linux/MotionVision.AppImage
+            dist/linux/MotionVision.deb
+          if-no-files-found: error
+          retention-days: 30
+
+  macos:
+    name: macOS native app and DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - name: Read version and runner architecture
+        id: meta
+        run: |
+          version="$(python -c 'import json; print(json.load(open("config/version.json"))["version"])')"
+          arch="$(uname -m)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "arch=$arch" >> "$GITHUB_OUTPUT"
+      - name: Test, diagnose, and build release artifacts
+        run: bash ./scripts/build_macos.sh
+      - name: Verify app bundle, embedded icon, and DMG
+        run: |
+          app='dist/macos/Motion Vision.app'
+          test -d "$app"
+          test -s dist/macos/MotionVision.dmg
+          test -s "$app/Contents/Info.plist"
+          find "$app/Contents/Resources" -maxdepth 1 -type f -iname '*.icns' -size +0c -print -quit | grep -q .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotionVision-v${{ steps.meta.outputs.version }}-macOS-${{ steps.meta.outputs.arch }}
+          path: |
+            dist/macos/Motion Vision.app
+            dist/macos/MotionVision.dmg
+          if-no-files-found: error
+          retention-days: 30
+
+  android:
+    name: Android APK and AAB (multiarch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK packages
+        run: |
+          set +o pipefail
+          yes | sdkmanager --licenses >/dev/null
+          license_status=${PIPESTATUS[1]}
+          set -o pipefail
+          test "$license_status" -eq 0
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Read product version
+        id: meta
+        run: echo "version=$(python -c 'import json; print(json.load(open("config/version.json"))["version"])')" >> "$GITHUB_OUTPUT"
+      - name: Test shared core and run Python diagnostics
+        run: |
+          python -m pip install -r requirements-build.txt
+          PYTHONPATH="$GITHUB_WORKSPACE/core" python -m unittest discover -s tests -v
+          python -m compileall -q core tests scripts
+          python -m pip check
+      - name: Run Android unit tests and build APK/AAB
+        run: bash ./scripts/build_android.sh
+      - name: Verify Android signing, package metadata, and launcher icon
+        run: |
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          test -s dist/android/MotionVision.apk
+          test -s dist/android/MotionVision.aab
+          "$tools/apksigner" verify dist/android/MotionVision.apk
+          "$tools/aapt" dump badging dist/android/MotionVision.apk | grep -F "name='com.motionvision.app'" >/dev/null
+          "$tools/aapt" dump badging dist/android/MotionVision.apk | grep -F 'application-icon' >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotionVision-v${{ steps.meta.outputs.version }}-Android-multiarch
+          path: |
+            dist/android/MotionVision.apk
+            dist/android/MotionVision.aab
+          if-no-files-found: error
+          retention-days: 30
