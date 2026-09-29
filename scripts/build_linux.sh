@@ -37,7 +37,7 @@ printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/
 chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/MotionVision"
 
 DEBROOT="$BUILD/debroot"
-mkdir -p "$DEBROOT/opt/motionvision" "$DEBROOT/usr/share/applications" "$DEBROOT/usr/share/icons/hicolor" "$DEBROOT/usr/share/doc/motion-vision" "$DEBROOT/DEBIAN"
+mkdir -p "$DEBROOT/opt/motionvision" "$DEBROOT/usr/bin" "$DEBROOT/usr/share/applications" "$DEBROOT/usr/share/icons/hicolor" "$DEBROOT/usr/share/doc/motion-vision" "$DEBROOT/DEBIAN"
 cp "$OUT/MotionVision" "$DEBROOT/opt/motionvision/MotionVision"
 sed -e 's/^Exec=MotionVision$/Exec=motionvision/' -e "s/^X-AppVersion=.*/X-AppVersion=$VERSION/" linux/MotionVision.desktop > "$DEBROOT/usr/share/applications/com.motionvision.app.desktop"
 cp -R assets/platform/linux/hicolor/. "$DEBROOT/usr/share/icons/hicolor/"

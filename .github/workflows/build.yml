@@ -34,7 +34,8 @@ jobs:
         shell: pwsh
         run: ./scripts/build_windows.ps1
       - name: Verify embedded Windows application icon
-        run: python scripts/verify_windows_icon.py dist/windows/MotionVision.exe
+        shell: pwsh
+        run: ./.venv/Scripts/python.exe scripts/verify_windows_icon.py dist/windows/MotionVision.exe
       - name: Verify release files
         shell: pwsh
         run: |
@@ -146,10 +147,7 @@ jobs:
           cmdline-tools-version: 15859902
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
       - name: Verify Android SDK environment and installed packages
         run: |
           sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
